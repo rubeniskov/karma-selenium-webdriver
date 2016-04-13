@@ -2,14 +2,9 @@ module.exports = function(grunt) {
     grunt.initConfig({
         'npm-publish': {
             options: {
-                abortIfDirty: true
-            }
-        },
-        'bump': {
-            options: {
+                abortIfDirty: true,
                 files: ['package.json'],
                 updateConfigs: [],
-                abortIfDirty: true,
                 commit: true,
                 commitMessage: 'bump: release v%VERSION%',
                 commitFiles: ['package.json'],
@@ -19,13 +14,12 @@ module.exports = function(grunt) {
                 push: true,
                 pushTo: 'origin',
                 gitDescribeOptions: '--tags --always --abbrev=1 --dirty=-d',
-                metadata: '',
+                metadata: ''
             }
         }
     });
     grunt.loadNpmTasks('grunt-npm');
-    grunt.loadNpmTasks('grunt-bump');
     return grunt.registerTask('release', 'Bump the version and publish to NPM.', function(type) {
-        return grunt.task.run(['bump:' + (type || 'patch'), 'npm-publish']);
+        return grunt.task.run('npm-publish');
     });
 };
