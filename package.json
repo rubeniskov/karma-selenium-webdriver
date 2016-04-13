@@ -4,7 +4,6 @@
   "description": "A Karma plugin. Run tests in an instance over a selenium webdriver",
   "main": "index.js",
   "scripts": {
-    "publish": "grunt release"
   },
   "repository": {
     "type": "git",
