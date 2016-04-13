@@ -1,6 +1,6 @@
 {
   "name": "karma-selenium-webdriver",
-  "version": "1.0.23",
+  "version": "1.1.0",
   "description": "A Karma plugin. Run tests in an instance over a selenium webdriver",
   "main": "index.js",
   "scripts": {},
