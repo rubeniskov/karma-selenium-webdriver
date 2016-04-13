@@ -2,14 +2,14 @@ module.exports = function(grunt) {
     grunt.initConfig({
         'npm-publish': {
             options: {
-                abortIfDirty: true,
-                tag: 'latest'
+                abortIfDirty: true
             }
         },
         'bump': {
             options: {
                 files: ['package.json'],
                 updateConfigs: [],
+                abortIfDirty: true,
                 commit: true,
                 commitMessage: 'bump: release v%VERSION%',
                 commitFiles: ['package.json'],
