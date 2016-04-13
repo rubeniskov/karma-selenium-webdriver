@@ -32,8 +32,15 @@
   "homepage": "https://github.com/rubeniskov/karma-selenium-webdriver#readme",
   "dependencies": {
     "deep-extend": "^0.4.1",
+    "q": "^1.4.1"
+  },
+  "peerDependencies": {
     "karma": ">=0.9",
-    "q": "^1.4.1",
     "selenium-webdriver": "^2.44.0"
+  },
+  "devDependencies": {
+    "grunt": "^1.0.1",
+    "grunt-bump": "^0.7.0",
+    "grunt-npm": "0.0.2"
   }
 }
