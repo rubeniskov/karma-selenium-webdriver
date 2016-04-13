@@ -1,10 +1,9 @@
 {
   "name": "karma-selenium-webdriver",
-  "version": "1.0.21",
+  "version": "1.0.22",
   "description": "A Karma plugin. Run tests in an instance over a selenium webdriver",
   "main": "index.js",
-  "scripts": {
-  },
+  "scripts": {},
   "repository": {
     "type": "git",
     "url": "git+https://github.com/rubeniskov/karma-selenium-webdriver.git"
@@ -22,7 +21,7 @@
   "licenses": [
     {
       "type": "MIT",
-      "url": "https://github.com/rubeniskov/karma-selenium-webdriver/blob/master/LICENSE.md"
+      "url": "https://github.com/rubeniskov/karma-selenium-webdriver/blob/master/LICENSE"
     }
   ],
   "bugs": {
@@ -31,11 +30,11 @@
   "homepage": "https://github.com/rubeniskov/karma-selenium-webdriver#readme",
   "dependencies": {
     "deep-extend": "^0.4.1",
-    "q": "^1.4.1"
+    "q": "^1.4.1",
+    "wd": "^0.4.0"
   },
   "peerDependencies": {
-    "karma": ">=0.9",
-    "selenium-webdriver": "^2.44.0"
+    "karma": ">=0.9"
   },
   "devDependencies": {
     "grunt": "^1.0.1",
