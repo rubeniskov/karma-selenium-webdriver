@@ -4,7 +4,7 @@
   "description": "A Karma plugin. Run tests in an instance over a selenium webdriver",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "publish": "grunt release"
   },
   "repository": {
     "type": "git",
