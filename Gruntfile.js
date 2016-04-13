@@ -26,6 +26,6 @@ module.exports = function(grunt) {
     grunt.loadNpmTasks('grunt-npm');
     grunt.loadNpmTasks('grunt-bump');
     return grunt.registerTask('release', 'Bump the version and publish to NPM.', function(type) {
-        return grunt.task.run(['bump', 'npm-publish']);
+        return grunt.task.run(['bump:' + (type || 'patch'), 'npm-publish']);
     });
 };
