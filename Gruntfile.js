@@ -2,6 +2,7 @@ module.exports = function(grunt) {
     grunt.initConfig({
         'npm-publish': {
             options: {
+                requires: ['bump'],
                 abortIfDirty: true,
                 tag: 'latest'
             }
