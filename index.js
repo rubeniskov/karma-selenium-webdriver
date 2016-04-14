@@ -1,6 +1,7 @@
 const wd = require('wd'),
     url = require('url'),
     q = require('q'),
+    qs = require('querystring'),
     deepExtend = require('deep-extend'),
     configure = function() {
         var defaults = deepExtend({}, arguments[0]),
@@ -12,7 +13,7 @@ const wd = require('wd'),
         return res;
     };
 
-var SeleniumWebDriver = function(baseBrowserDecorator, cfg, args, id, injector, emitter, logger) {
+var SeleniumWebDriver = function(baseBrowserDecorator, cfg, args, id, socketServer, injector, emitter, logger) {
 
     baseBrowserDecorator(this);
 
@@ -41,15 +42,7 @@ var SeleniumWebDriver = function(baseBrowserDecorator, cfg, args, id, injector, 
             formatError(err) {
                 return err.message + '\n' + (err.data ? '  ' + err.data : '')
             }
-        },
-        ourl = (function(surl) {
-            return configure(surl, {
-                host: surl.hostname + ':' + surl.port,
-                query: {
-                    id: id
-                }
-            });
-        })(configure(browser));
+        };
 
     if (!spec.browserName) {
         throw new Error('browserName is required!');
@@ -61,7 +54,13 @@ var SeleniumWebDriver = function(baseBrowserDecorator, cfg, args, id, injector, 
     self.id = id;
 
     self._start = function() {
-        var kurl = url.format(ourl);
+        var kurl = url.format({
+            protocol: browser.protocol,
+            host: browser.hostname + ':' + browser.port,
+            query: {
+                id: id
+            }
+        });
 
         self.browser = wd.remote(config);
         self.browser.init(spec, function(err) {
@@ -69,28 +68,29 @@ var SeleniumWebDriver = function(baseBrowserDecorator, cfg, args, id, injector, 
                 return log.error('Browser %s driver initialize failed %s', spec.browserName, scope.formatError(err));
             log.debug('Browser %s driver connecting %s', spec.browserName, kurl);
 
-            if (scope.session) {
-                self.browser.attach(scope.session, function(err, capabilities) {
+            if (scope.sessionID) {
+                self.browser.attach(scope.sessionID, function(err, capabilities) {
                     if (err) {
-                        log.debug('Browser driver failed to attach session %s %s', scope.session, scope.formatError(err));
+                        log.debug('Browser driver failed to attach session %s %s', scope.sessionID, scope.formatError(err));
                         log.info('Trying create new session');
-                        scope.session = null;
+                        scope.sessionID = null;
                         self._start();
                     }
                     self.markCaptured();
-                    log.info('Browser driver session attached %s', scope.session);
+                    log.info('Browser driver session attached %s', scope.sessionID);
                 });
             } else {
                 self.browser.get(kurl, function(err) {
+
                     if (err)
                         return log.error('Browser driver failed %s %s', kurl, scope.formatError(err));
-                    log.debug('Browser %s driver connected %s', spec.browserName, kurl);
+                    log.info('Browser %s driver connected %s', spec.browserName, kurl);
 
                     self.getSession(function(sessionID) {
-                        scope.session = sessionID;
+                        scope.sessionID = sessionID;
                         self.markCaptured();
-                        (args.pseudoActivityInterval || cfg.singleRun === false) &&
-                            self.heartbeat(!cfg.singleRun ? args.pseudoActivityInterval || 5000 : args.pseudoActivityInterval);
+                        args.pseudoActivityInterval && self.heartbeat(args.pseudoActivityInterval);
+                        cfg.singleRun === false && self.heartbeat(args.pseudoActivityInterval||10000);
                     });
                 });
             }
@@ -98,14 +98,9 @@ var SeleniumWebDriver = function(baseBrowserDecorator, cfg, args, id, injector, 
 
         self._process = {
             kill: function() {
-                scope.intervals.hearbeat && clearInterval(scope.intervals.hearbeat);
-                self.browser.quit(function() {
-                    log.info('Killed ' + spec.browserName + '.');
-                    self._onProcessExit(self.error ? -1 : 0, self.error);
-                });
+                self.kill();
             }
         };
-
 
         self.browser.on('status', function(info) {
             log.debug(info.cyan);
@@ -120,7 +115,18 @@ var SeleniumWebDriver = function(baseBrowserDecorator, cfg, args, id, injector, 
         });
     };
 
-    self.kill = function() {
+    self._done = function(error) {
+        self.error = self.error || error
+        self.emit('done')
+
+        if (self.error && self.state !== self.STATE_BEING_FORCE_KILLED && self.state !== self.STATE_RESTARTING) {
+            emitter.emit('browser_process_failure', self)
+        }
+
+        self.state = self.FINISHED
+    }
+
+    self.kill = function(done) {
         if (scope.promises.kill) {
             return scope.promises.kill
         }
@@ -128,33 +134,29 @@ var SeleniumWebDriver = function(baseBrowserDecorator, cfg, args, id, injector, 
         var deferred = q.defer();
 
         self.browser && self.browser.quit(function(err) {
-            log.debug('Browser %s close connection %s', spec.browserName, sessionID);
+            log.info('Browser %s close connection %s', spec.browserName, scope.sessionID);
             if (err) {
-                log.error('Browser %s driver failed %s %s', spec.browserName, kurl, scope.formatError(err));
+                log.error('Browser %s driver failed %s %s', spec.browserName, scope.formatError(err));
                 deferred.reject();
+                self._done(err);
             }
-            self.state = self.FINISHED;
+            self._done();
             self._onProcessExit(self.error ? -1 : 0, self.error);
             deferred.resolve();
         });
 
-        self.state = self.BEING_KILLED
+        self.state = self.STATE_BEING_KILLED
 
         return (scope.promises.kill = deferred.promise);
-    }
+    };
 
     self.restart = function() {
-        if (self.state === self.BEING_FORCE_KILLED) {
-            return
-        }
-
         if (!scope.promises.kill) {
             self.kill();
         }
-
         scope.promises.kill.then(function() {
-            if (self.state === self.BEING_FORCE_KILLED) {
-                self.state = self.FINISHED
+            if (self.state === self.STATE_BEING_FORCE_KILLED) {
+                self.state = self.STATE_FINISHED
             } else {
                 scope.promises.kill = null
                 log.debug('Restarting %s', self.name)
@@ -162,23 +164,11 @@ var SeleniumWebDriver = function(baseBrowserDecorator, cfg, args, id, injector, 
             }
         });
 
-        self.state = self.RESTARTING
+        self.state = self.STATE_RESTARTING
     };
 
-    self._done = function(error) {
-        console.log('DONEE');
-        self.error = self.error || error
-        self.emit('done')
-
-        if (self.error && self.state !== self.BEING_FORCE_KILLED && self.state !== RESTARTING) {
-            emitter.emit('browser_process_failure', self)
-        }
-
-        self.state = self.FINISHED
-    }
-
     self.forceKill = function() {
-        self.state = self.BEING_FORCE_KILLED
+        self.state = self.STATE_BEING_FORCE_KILLED
         return self.kill();;
     };
 
@@ -196,20 +186,6 @@ var SeleniumWebDriver = function(baseBrowserDecorator, cfg, args, id, injector, 
         }, interval)
     };
 
-    self._done = function(error) {
-        scope.promises.kill = scope.promises.kill || q.defer();
-
-        self.error = self.error || error;
-
-        self.emit('done');
-
-        if (self.error && self.state !== self.BEING_FORCE_KILLED && self.state !== self.RESTARTING) {
-            emitter.emit('browser_process_failure', self)
-        }
-
-        self.state = self.FINISHED
-    }
-
     self.toString = function() {
         return self.name || 'Unnamed SeleniumWebdriverBrowser';
     };
@@ -221,24 +197,20 @@ var SeleniumWebDriver = function(baseBrowserDecorator, cfg, args, id, injector, 
         return self.browser.sessionID;
     };
 
-    self._restart = function() {};
+    self.on('disconnect', function(socket){
+        log.error();
+    });
 
-    self._onKillTimeout = function() {};
-
-    self._execCommand = function() {}
+    socketServer.on('connection', function(socket) {
+        var referer = url.parse(socket.handshake.headers.referer),
+            sid = qs.parse(referer.query).id;
+        socket.on('disconnect', function() {
+            self.id === sid && self.emit('disconnect', socket);
+        });
+    });
 };
 
-SeleniumWebDriver.prototype = {
-    name: 'SeleniumWebDriver',
-    DEFAULT_CMD: {
-        linux: require('wd').path,
-        darwin: require('wd').path,
-        win32: require('wd').path
-    },
-    ENV_CMD: 'WEBDRIVER_BIN'
-};
-
-SeleniumWebDriver.$inject = ['baseBrowserDecorator', 'config', 'args', 'id', 'injector', 'emitter', 'logger'];
+SeleniumWebDriver.$inject = ['baseBrowserDecorator', 'config', 'args', 'id', 'socketServer', 'injector', 'emitter', 'logger'];
 
 module.exports = {
     'launcher:SeleniumWebDriver': ['type', SeleniumWebDriver]
