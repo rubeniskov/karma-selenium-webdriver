@@ -1,0 +1,22 @@
+{
+  "name": "docker",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1",
+    "launch-hub": "docker run -d -p 4444:4444 --name selenium-hub selenium/hub:2.53.0||docker start selenium-hub",
+    "launch-chrome": "docker run -d --link selenium-hub:hub --name selenium-node-chrome selenium/node-chrome:2.53.0||docker start selenium-node-chrome",
+    "launch-firefox": "docker run -d --link selenium-hub:hub --name selenium-node-firefox selenium/node-firefox:2.53.0||docker start selenium-node-firefox",
+    "launch": "npm run launch-hub && npm run launch-chrome && npm run launch-firefox",
+    "karma-jasmine": "./node_modules/.bin/karma start .karma.jasmine.conf.js"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "jasmine-core": "^2.5.2",
+    "karma": "^1.3.0",
+    "karma-jasmine": "^1.1.0",
+    "karma-selenium-webdriver": "latest"
+  }
+}
