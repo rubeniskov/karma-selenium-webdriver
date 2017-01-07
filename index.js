@@ -7,6 +7,7 @@ const wd = require('wd'),
         var defaults = deepExtend({}, arguments[0]),
             obj = deepExtend.apply(null, arguments),
             res = {};
+
         Object.keys(defaults).forEach(function(key) {
             res[key] = obj[key];
         });
@@ -21,12 +22,12 @@ var SeleniumWebDriver = function(baseBrowserDecorator, cfg, args, id, socketServ
         log = logger.create('selenium-webdriver'),
         config = configure({
             protocol: cfg.protocol || 'http',
-            hostname: cfg.hostname,
+            hostname: cfg.hostname || 'localhost',
             port: 4444
         }, cfg.seleniumConfig, (args || {}).config),
         browser = configure({
             protocol: cfg.protocol || 'http',
-            hostname: cfg.hostname,
+            hostname: require('dns-sync').resolve(require('os').hostname()) || 'localhost',
             port: cfg.port
         }, (cfg.seleniumConfig || {}).browser, ((args || {}).config || {}).browser),
         spec = configure({
@@ -169,7 +170,7 @@ var SeleniumWebDriver = function(baseBrowserDecorator, cfg, args, id, socketServ
 
     self.forceKill = function() {
         self.state = self.STATE_BEING_FORCE_KILLED
-        return self.kill();;
+        return self.kill();
     };
 
     self.heartbeat = function(interval) {
