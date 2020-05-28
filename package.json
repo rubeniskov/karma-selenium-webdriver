@@ -30,7 +30,7 @@
   "homepage": "https://github.com/rubeniskov/karma-selenium-webdriver#readme",
   "dependencies": {
     "deep-extend": "^0.4.1",
-    "dns-sync": "^0.1.3",
+    "dns-sync": "^0.2.1",
     "q": "^1.4.1",
     "wd": "^0.4.0"
   },
